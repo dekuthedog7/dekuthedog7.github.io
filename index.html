@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>WINCHOZ Calc</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: background 0.4s;
+}
+body.dark { background: #000; }
+body.light { background: #e8e8e8; }
+
+.calc {
+  border-radius: 24px; width: 340px; overflow: hidden;
+  transition: all 0.4s;
+}
+body.dark .calc { background: #000; border: 1px solid #1a1a1a; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
+body.light .calc { background: #fff; border: 1px solid #ddd; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
+
+/* Logo header */
+.logo-header {
+  position: relative; width: 100%; height: 160px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-header img { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; transition: opacity 0.4s; }
+body.light .logo-header img { filter: invert(1); opacity: 0.4; }
+.logo-header::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 30px; transition: background 0.4s;
+}
+body.dark .logo-header::after { background: linear-gradient(transparent, #000); }
+body.light .logo-header::after { background: linear-gradient(transparent, #fff); }
+
+.toggle-wrap { position: absolute; top: 10px; right: 12px; z-index: 2; }
+.toggle {
+  width: 44px; height: 24px; border-radius: 12px; cursor: pointer;
+  position: relative; border: none; transition: background 0.3s; outline: none;
+}
+body.dark .toggle { background: #3a0000; }
+body.light .toggle { background: #ffcccc; }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; width: 20px; height: 20px;
+  border-radius: 50%; transition: all 0.3s;
+}
+body.dark .toggle::after { left: 2px; background: #e02020; box-shadow: 0 0 6px rgba(224,32,32,0.5); }
+body.light .toggle::after { left: 22px; background: #cc0000; box-shadow: 0 0 6px rgba(204,0,0,0.4); }
+
+/* Tabs */
+.tabs {
+  display: flex; margin: 12px 20px 0; gap: 0; border-radius: 10px; overflow: hidden; transition: background 0.4s;
+}
+body.dark .tabs { background: #0a0a0a; }
+body.light .tabs { background: #f0f0f0; }
+.tab {
+  flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.3s; letter-spacing: 1px;
+}
+body.dark .tab { background: transparent; color: #444; }
+body.light .tab { background: transparent; color: #aaa; }
+body.dark .tab.active { background: #e02020; color: #fff; }
+body.light .tab.active { background: #cc0000; color: #fff; }
+
+.body-wrap { padding: 12px 20px 20px; }
+
+/* Panels */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ========== CALCULATOR ========== */
+.display {
+  border-radius: 14px; padding: 18px; margin-bottom: 14px;
+  text-align: right; min-height: 85px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  transition: background 0.4s;
+}
+body.dark .display { background: #000; border: 1px solid #111; }
+body.light .display { background: #f5f5f5; border: 1px solid #e0e0e0; }
+.expr { font-size: 14px; min-height: 20px; margin-bottom: 4px; }
+body.dark .expr { color: #444; }
+body.light .expr { color: #999; }
+.result { font-size: 36px; font-weight: 300; overflow: hidden; text-overflow: ellipsis; }
+body.dark .result { color: #e02020; }
+body.light .result { color: #cc0000; }
+
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.btn {
+  border: none; border-radius: 14px; padding: 18px; font-size: 20px;
+  cursor: pointer; transition: all .15s; font-weight: 500;
+}
+.btn:active { transform: scale(0.93); }
+body.dark .num { background: #000; color: #e02020; border: 1px solid #1a1a1a; }
+body.dark .num:hover { background: #111; }
+body.dark .op { background: #000; color: #ff4444; border: 1px solid #1a1a1a; }
+body.dark .op:hover { background: #111; }
+body.dark .clear { background: #000; color: #ff6666; border: 1px solid #1a1a1a; }
+body.dark .clear:hover { background: #110808; }
+body.dark .eq { background: #e02020; color: #fff; border: 1px solid #e02020; }
+body.dark .eq:hover { background: #ff2a2a; }
+body.light .num { background: #fff; color: #cc0000; border: 1px solid #eee; }
+body.light .num:hover { background: #f5f5f5; }
+body.light .op { background: #fff; color: #cc0000; border: 1px solid #eee; }
+body.light .op:hover { background: #f5f5f5; }
+body.light .clear { background: #fff; color: #ff3333; border: 1px solid #eee; }
+body.light .clear:hover { background: #fff5f5; }
+body.light .eq { background: #cc0000; color: #fff; border: 1px solid #cc0000; }
+body.light .eq:hover { background: #dd1111; }
+.zero { grid-column: span 2; }
+
+/* ========== TIP CALCULATOR ========== */
+.tip-section { margin-bottom: 16px; }
+.tip-label {
+  font-size: 12px; letter-spacing: 1px; font-weight: 600; margin-bottom: 8px;
+  text-transform: uppercase; transition: color 0.4s;
+}
+body.dark .tip-label { color: #555; }
+body.light .tip-label { color: #999; }
+
+.tip-input {
+  width: 100%; padding: 14px 16px; border-radius: 12px; font-size: 22px;
+  font-weight: 300; outline: none; transition: all 0.4s;
+  -moz-appearance: textfield;
+}
+.tip-input::-webkit-outer-spin-button,
+.tip-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+body.dark .tip-input { background: #0a0a0a; border: 1px solid #1a1a1a; color: #e02020; }
+body.dark .tip-input:focus { border-color: #e02020; }
+body.light .tip-input { background: #f5f5f5; border: 1px solid #e0e0e0; color: #cc0000; }
+body.light .tip-input:focus { border-color: #cc0000; }
+.tip-input::placeholder { opacity: 0.3; }
+
+.tip-presets { display: flex; gap: 8px; margin-bottom: 16px; }
+.tip-preset {
+  flex: 1; padding: 12px 0; border-radius: 12px; font-size: 15px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s; text-align: center;
+}
+.tip-preset:active { transform: scale(0.95); }
+body.dark .tip-preset { background: #0a0a0a; color: #e02020; border: 1px solid #1a1a1a; }
+body.dark .tip-preset.active { background: #e02020; color: #fff; border-color: #e02020; }
+body.light .tip-preset { background: #f5f5f5; color: #cc0000; border: 1px solid #e0e0e0; }
+body.light .tip-preset.active { background: #cc0000; color: #fff; border-color: #cc0000; }
+
+.split-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.split-btn {
+  width: 40px; height: 40px; border-radius: 50%; font-size: 20px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s; display: flex;
+  align-items: center; justify-content: center;
+}
+.split-btn:active { transform: scale(0.9); }
+body.dark .split-btn { background: #1a1a1a; color: #e02020; }
+body.light .split-btn { background: #eee; color: #cc0000; }
+.split-num {
+  font-size: 28px; font-weight: 300; min-width: 40px; text-align: center; transition: color 0.4s;
+}
+body.dark .split-num { color: #e02020; }
+body.light .split-num { color: #cc0000; }
+.split-text { font-size: 13px; transition: color 0.4s; }
+body.dark .split-text { color: #555; }
+body.light .split-text { color: #999; }
+
+.tip-results {
+  border-radius: 14px; padding: 16px; transition: all 0.4s;
+}
+body.dark .tip-results { background: #0a0a0a; border: 1px solid #1a1a1a; }
+body.light .tip-results { background: #f5f5f5; border: 1px solid #e0e0e0; }
+.tip-row {
+  display: flex; justify-content: space-between; padding: 8px 0;
+  transition: border-color 0.4s;
+}
+.tip-row:not(:last-child) { border-bottom: 1px solid; }
+body.dark .tip-row:not(:last-child) { border-color: #1a1a1a; }
+body.light .tip-row:not(:last-child) { border-color: #e8e8e8; }
+.tip-row-label { font-size: 14px; transition: color 0.4s; }
+body.dark .tip-row-label { color: #666; }
+body.light .tip-row-label { color: #888; }
+.tip-row-value { font-size: 18px; font-weight: 500; transition: color 0.4s; }
+body.dark .tip-row-value { color: #e02020; }
+body.light .tip-row-value { color: #cc0000; }
+.tip-row-total .tip-row-value { font-size: 22px; font-weight: 600; }
+
+.footer { text-align: center; font-size: 11px; margin-top: 14px; letter-spacing: 2px; }
+body.dark .footer { color: #222; }
+body.light .footer { color: #ccc; }
+</style>
+</head>
+<body class="dark">
+<div class="calc">
+  <div class="logo-header">
+    <img src="logo.png" alt="WINCHOZ">
+    <div class="toggle-wrap">
+      <button class="toggle" onclick="toggleTheme()" aria-label="Toggle theme"></button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('calc')">CALC</button>
+    <button class="tab" onclick="switchTab('tip')">TIP</button>
+  </div>
+
+  <div class="body-wrap">
+    <!-- Calculator Panel -->
+    <div class="panel active" id="panel-calc">
+      <div class="display">
+        <div class="expr" id="expr"></div>
+        <div class="result" id="result">0</div>
+      </div>
+      <div class="grid">
+        <button class="btn clear" onclick="cl()">AC</button>
+        <button class="btn op" onclick="add('(')">(</button>
+        <button class="btn op" onclick="add(')')">)</button>
+        <button class="btn op" onclick="add('/')">÷</button>
+        <button class="btn num" onclick="add('7')">7</button>
+        <button class="btn num" onclick="add('8')">8</button>
+        <button class="btn num" onclick="add('9')">9</button>
+        <button class="btn op" onclick="add('*')">×</button>
+        <button class="btn num" onclick="add('4')">4</button>
+        <button class="btn num" onclick="add('5')">5</button>
+        <button class="btn num" onclick="add('6')">6</button>
+        <button class="btn op" onclick="add('-')">−</button>
+        <button class="btn num" onclick="add('1')">1</button>
+        <button class="btn num" onclick="add('2')">2</button>
+        <button class="btn num" onclick="add('3')">3</button>
+        <button class="btn op" onclick="add('+')">+</button>
+        <button class="btn num zero" onclick="add('0')">0</button>
+        <button class="btn num" onclick="add('.')">.</button>
+        <button class="btn eq" onclick="calc()">=</button>
+      </div>
+    </div>
+
+    <!-- Tip Calculator Panel -->
+    <div class="panel" id="panel-tip">
+      <div class="tip-section">
+        <div class="tip-label">Bill Amount</div>
+        <input class="tip-input" id="billAmount" type="number" placeholder="0.00" inputmode="decimal" oninput="calcTip()">
+      </div>
+
+      <div class="tip-section">
+        <div class="tip-label">Tip %</div>
+        <div class="tip-presets">
+          <button class="tip-preset" onclick="setTip(10)">10%</button>
+          <button class="tip-preset" onclick="setTip(15)">15%</button>
+          <button class="tip-preset active" onclick="setTip(18)">18%</button>
+          <button class="tip-preset" onclick="setTip(20)">20%</button>
+          <button class="tip-preset" onclick="setTip(25)">25%</button>
+        </div>
+        <input class="tip-input" id="tipPercent" type="number" placeholder="18" value="18" inputmode="decimal" oninput="calcTip(true)" style="font-size:16px; padding:10px 14px;">
+      </div>
+
+      <div class="tip-section">
+        <div class="tip-label">Split Between</div>
+        <div class="split-row">
+          <button class="split-btn" onclick="changeSplit(-1)">−</button>
+          <div class="split-num" id="splitCount">1</div>
+          <button class="split-btn" onclick="changeSplit(1)">+</button>
+          <div class="split-text">people</div>
+        </div>
+      </div>
+
+      <div class="tip-results">
+        <div class="tip-row">
+          <span class="tip-row-label">Tip</span>
+          <span class="tip-row-value" id="tipAmount">$0.00</span>
+        </div>
+        <div class="tip-row">
+          <span class="tip-row-label">Total</span>
+          <span class="tip-row-value" id="tipTotal">$0.00</span>
+        </div>
+        <div class="tip-row tip-row-total">
+          <span class="tip-row-label">Per Person</span>
+          <span class="tip-row-value" id="tipPerPerson">$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">DEKU CALC 🐕</div>
+  </div>
+</div>
+
+<script>
+// ========== SOUNDS ==========
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+function playClick() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // White noise burst = keyboard click
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.025, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  // Highpass to make it clicky
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 3000;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.25, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+  src.connect(hp); hp.connect(g); g.connect(audioCtx.destination);
+  src.start(t); src.stop(t + 0.025);
+}
+
+function playEquals() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Heavier keyboard thock — deeper + longer
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.8;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 1500;
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 6000;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.35, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(audioCtx.destination);
+  src.start(t); src.stop(t + 0.05);
+  // Add a low thud
+  const o = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  o.type = 'sine'; o.frequency.value = 150;
+  g2.gain.setValueAtTime(0.2, t);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+  o.connect(g2); g2.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.04);
+}
+
+function playSwitch() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Slide whoosh
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i/data.length);
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 4000; bp.Q.value = 0.8;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  src.start(t); src.stop(t + 0.08);
+}
+
+function playToggle() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Two-tone toggle snap
+  const o1 = audioCtx.createOscillator();
+  const o2 = audioCtx.createOscillator();
+  const g1 = audioCtx.createGain();
+  const g2 = audioCtx.createGain();
+  o1.type = 'sine'; o1.frequency.value = 440;
+  o2.type = 'sine'; o2.frequency.value = 660;
+  g1.gain.setValueAtTime(0.18, t);
+  g1.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+  g2.gain.setValueAtTime(0.18, t + 0.04);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  o1.connect(g1); g1.connect(audioCtx.destination);
+  o2.connect(g2); g2.connect(audioCtx.destination);
+  o1.start(t); o1.stop(t + 0.04);
+  o2.start(t + 0.04); o2.stop(t + 0.08);
+}
+
+// ========== TABS ==========
+function switchTab(tab) {
+  playSwitch();
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (tab==='calc'?0:1)===i));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+}
+
+// ========== THEME ==========
+function toggleTheme() {
+  playToggle();
+  const isDark = document.body.classList.contains('dark');
+  document.body.className = isDark ? 'light' : 'dark';
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+if (localStorage.getItem('theme') === 'light') toggleTheme();
+
+// ========== CALCULATOR ==========
+let s = '', done = false;
+const r = document.getElementById('result');
+const e = document.getElementById('expr');
+function add(c) {
+  playClick();
+  if (done) { s = ''; done = false; }
+  s += c;
+  r.textContent = s.replace(/\*/g, '×').replace(/\//g, '÷');
+}
+function cl() { playClick(); s = ''; r.textContent = '0'; e.textContent = ''; done = false; }
+function calc() {
+  if (s === '67') { window.open('https://youtu.be/5cVe8m7wPig?si=IpPUZBig1C9VDLH-', '_blank'); s = ''; r.textContent = '0'; e.textContent = ''; done = false; return; }
+  playEquals();
+  try {
+    e.textContent = s.replace(/\*/g, '×').replace(/\//g, '÷');
+    let v = Function('"use strict"; return (' + s + ')')();
+    r.textContent = Number.isInteger(v) ? v : parseFloat(v.toFixed(8));
+    s = String(r.textContent); done = true;
+  } catch { r.textContent = 'Error'; done = true; }
+}
+document.addEventListener('keydown', (ev) => {
+  if (document.getElementById('panel-calc').classList.contains('active')) {
+    if (ev.key >= '0' && ev.key <= '9' || ev.key === '.') add(ev.key);
+    else if ('+-*/'.includes(ev.key)) add(ev.key);
+    else if (ev.key === 'Enter' || ev.key === '=') calc();
+    else if (ev.key === 'Escape' || ev.key === 'c') cl();
+    else if (ev.key === '(' || ev.key === ')') add(ev.key);
+  }
+});
+
+// ========== TIP CALCULATOR ==========
+let tipPct = 18, split = 1;
+function setTip(pct) {
+  tipPct = pct;
+  document.getElementById('tipPercent').value = pct;
+  document.querySelectorAll('.tip-preset').forEach(b => {
+    b.classList.toggle('active', parseInt(b.textContent) === pct);
+  });
+  calcTip();
+}
+function changeSplit(d) {
+  split = Math.max(1, split + d);
+  document.getElementById('splitCount').textContent = split;
+  calcTip();
+}
+function calcTip(fromInput) {
+  const bill = parseFloat(document.getElementById('billAmount').value) || 0;
+  if (fromInput) {
+    tipPct = parseFloat(document.getElementById('tipPercent').value) || 0;
+    document.querySelectorAll('.tip-preset').forEach(b => {
+      b.classList.toggle('active', parseInt(b.textContent) === tipPct);
+    });
+  }
+  const tip = bill * (tipPct / 100);
+  const total = bill + tip;
+  const pp = total / split;
+  document.getElementById('tipAmount').textContent = '$' + tip.toFixed(2);
+  document.getElementById('tipTotal').textContent = '$' + total.toFixed(2);
+  document.getElementById('tipPerPerson').textContent = '$' + pp.toFixed(2);
+}
+</script>
+</body>
+</html>
