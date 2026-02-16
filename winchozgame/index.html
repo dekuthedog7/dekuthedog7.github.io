@@ -574,8 +574,8 @@ let wave=0,maxWave=10,enemies=[],bullets=[],particles=[],
 furniture.forEach(f=>{
   if(f.type==='coffee'){f.hp=3;f.maxHp=3;f.hit=0;f.dead=false}
   if(f.type==='printer'){
-    // Randomly assign printer subtype: grenade or shield
-    f.subtype=Math.random()<0.5?'grenade':'shield';
+    // Printers drop grenade or ammo
+    f.subtype=Math.random()<0.6?'grenade':'ammo';
     f.hp=3;f.maxHp=3;f.hit=0;f.dead=false;
   }
 });
@@ -620,15 +620,15 @@ function startWave(w){
     const isBrute=!isBoss&&Math.random()<(0.15+w*0.025);
     const bruteScale=1.3+Math.random()*0.4; // 1.3x to 1.7x size
     const eType=isBoss?'boss':isBrute?'brute':'grunt';
-    const eW=isBoss?70:isBrute?Math.round(54*bruteScale):54;
-    const eH=isBoss?72:isBrute?Math.round(60*bruteScale):60;
-    const eHp=isBoss?60+w*5:isBrute?Math.round(hp*3.5):hp;
-    const eSpd=isBoss?spd*0.6:isBrute?spd*0.7:spd;
+    const eW=isBoss?100:isBrute?Math.round(54*bruteScale):54;
+    const eH=isBoss?105:isBrute?Math.round(60*bruteScale):60;
+    const eHp=isBoss?250:isBrute?Math.round(hp*3.5):hp;
+    const eSpd=isBoss?spd*0.75:isBrute?spd*0.7:spd;
     enemies.push({
       x:sx,y:sy,w:eW,h:eH,
       vx:0,vy:0,hp:eHp,maxHp:eHp,
       speed:eSpd,hit:0,dead:false,
-      type:eType,scale:isBrute?bruteScale:isBoss?1.5:1.1,
+      type:eType,scale:isBrute?bruteScale:isBoss?2.0:1.1,
       frame:0,animT:0,
       spawnFrom:f,spawnTimer:i*18,spawned:false,
     });
@@ -763,19 +763,19 @@ function drawFurnitureItem(f){
       ctx.fillStyle='#ddd';ctx.fillRect(x,y,w,h);
       ctx.fillStyle='#eee';ctx.fillRect(x,y,w,4);ctx.fillStyle='#bbb';ctx.fillRect(x+2,y+h-3,w-4,3);
       ctx.fillStyle='#999';ctx.fillRect(x+6,y+6,w-12,10);// display
-      // Color-coded LED: red=grenade, blue=shield
-      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#0af';
+      // Color-coded LED: red=grenade, yellow=ammo
+      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#ffd700';
       ctx.fillRect(x+8,y+8,4,3);
       // Subtype icon
-      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#0af';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
-      ctx.fillText(f.subtype==='grenade'?'💥':'🛡️',x+w/2,y+h-16);
+      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#ffd700';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
+      ctx.fillText(f.subtype==='grenade'?'💥':'📦',x+w/2,y+h-16);
       ctx.fillStyle='#aaa';ctx.fillRect(x+4,y+h-10,w-8,4);// paper tray
       ctx.fillStyle='#fff';ctx.fillRect(x+8,y+h-14,w-16,4);// paper
       // Buttons
       ctx.fillStyle='#888';
       for(let bx=0;bx<3;bx++)ctx.fillRect(x+16+bx*10,y+8,6,4);
       // Glow outline
-      ctx.strokeStyle=f.subtype==='grenade'?'rgba(255,68,0,.4)':'rgba(0,170,255,.4)';ctx.lineWidth=1;ctx.strokeRect(x-1,y-1,w+2,h+2);
+      ctx.strokeStyle=f.subtype==='grenade'?'rgba(255,68,0,.4)':'rgba(255,215,0,.4)';ctx.lineWidth=1;ctx.strokeRect(x-1,y-1,w+2,h+2);
       break;
     case 'cooler':
       ctx.fillStyle='rgba(0,0,0,.08)';ctx.fillRect(x+3,y+h,w-2,4);
@@ -1206,7 +1206,7 @@ function updatePlayer(){
         if(f.hp<=0){
           f.dead=true;SFX.coffeeBreak();
           if(f.subtype==='grenade'){P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);playTone(150,0.2,'sawtooth',0.3)}
-          else if(P.shieldCooldown<=0){P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);playTone(600,0.15,'sine',0.2)}
+          else{pickups.push({x:f.x,y:f.y,w:20,h:20,type:'ammo',amount:12+Math.floor(Math.random()*10),life:600});spawnP(f.x+f.w/2,f.y+f.h/2,'#ffd700',10);SFX.pickup()}
           P.score+=50;
         }
       }
@@ -1302,9 +1302,9 @@ function updateBullets(){
           if(f.subtype==='grenade'){
             P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);
             playTone(150,0.2,'sawtooth',0.3);playNoise(0.15,0.25);
-          }else if(P.shieldCooldown<=0){
-            P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);
-            playTone(600,0.15,'sine',0.2);playTone(900,0.1,'sine',0.15);
+          }else{
+            pickups.push({x:f.x,y:f.y,w:20,h:20,type:'ammo',amount:12+Math.floor(Math.random()*10),life:600});
+            spawnP(f.x+f.w/2,f.y+f.h/2,'#ffd700',10);SFX.pickup();
           }
           P.score+=50;
         }
