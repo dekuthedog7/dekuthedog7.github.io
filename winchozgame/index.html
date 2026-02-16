@@ -600,7 +600,7 @@ function startWave(w){
   wave=w;waveCleared=false;waveTimer=0;
   const count=Math.min(6+Math.floor(w*2),30);
   const hpBase=2+Math.floor(w*0.5);
-  const speedBase=0.85+w*0.09; // Aggressive enemies
+  const speedBase=1.0+w*0.1; // Even faster
 
   P.ammo=Math.min(P.maxAmmo,P.ammo+8+wave*2);
   if(w%5===0){P.shootPower++;P.maxAmmo+=5;P.maxHp+=2;P.hp=Math.min(P.maxHp,P.hp+5)}
