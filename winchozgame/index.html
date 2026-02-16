@@ -147,7 +147,7 @@ const SFX={
   },
   menuMove(){playTone(600,0.04,'square',0.15)},
   menuSelect(){playTone(800,0.05,'square',0.2);playTone(1200,0.08,'square',0.15)},
-  dodge(){playNoise(0.06,0.15);playTone(500,0.04,'triangle',0.15)},
+  dodge(){playNoise(0.12,0.3);playTone(800,0.08,'sine',0.2);playTone(400,0.12,'triangle',0.15);playTone(200,0.15,'sine',0.1)},
 };
 
 // MUSIC ENGINE
@@ -523,17 +523,27 @@ function genFurniture(){
     const layout=layouts[ri%layouts.length];
     layout(r).forEach(f=>furniture.push(f));
   });
-  // Corridor details — vending machines, bookshelves, plants along walls
+  // Corridor details — vending machines, bookshelves, tables, cabinets along walls
   const corridorItems=[
     {x:350,y:520,w:40,h:80,type:'vending'},{x:1100,y:520,w:40,h:80,type:'vending'},
     {x:2000,y:1170,w:40,h:80,type:'vending'},{x:2800,y:520,w:40,h:80,type:'vending'},
+    {x:1500,y:350,w:40,h:80,type:'vending'},{x:600,y:1350,w:40,h:80,type:'vending'},
     {x:600,y:870,w:60,h:70,type:'bookshelf'},{x:1400,y:1170,w:60,h:70,type:'bookshelf'},
-    {x:2200,y:870,w:60,h:70,type:'bookshelf'},
+    {x:2200,y:870,w:60,h:70,type:'bookshelf'},{x:300,y:1100,w:60,h:70,type:'bookshelf'},
+    {x:1800,y:1500,w:60,h:70,type:'bookshelf'},{x:2600,y:300,w:60,h:70,type:'bookshelf'},
     {x:800,y:1000,w:80,h:45,type:'comptable'},{x:1800,y:600,w:80,h:45,type:'comptable'},
+    {x:500,y:450,w:80,h:45,type:'comptable'},{x:2400,y:1000,w:80,h:45,type:'comptable'},
+    {x:1000,y:1600,w:80,h:45,type:'comptable'},{x:2900,y:800,w:80,h:45,type:'comptable'},
+    {x:750,y:600,w:45,h:60,type:'cabinet'},{x:1600,y:1100,w:45,h:60,type:'cabinet'},
+    {x:2100,y:500,w:45,h:60,type:'cabinet'},{x:400,y:1700,w:45,h:60,type:'cabinet'},
+    {x:1200,y:400,w:90,h:50,type:'desk'},{x:2700,y:1200,w:90,h:50,type:'desk'},
+    {x:200,y:900,w:55,h:40,type:'printer'},{x:1900,y:850,w:55,h:40,type:'printer'},
+    {x:2500,y:1600,w:55,h:40,type:'printer'},{x:800,y:1400,w:30,h:35,type:'coffee'},
+    {x:2000,y:250,w:30,h:35,type:'coffee'},{x:1300,y:1800,w:30,h:35,type:'coffee'},
   ];
   corridorItems.forEach(f=>furniture.push(f));
-  // Scattered small items — 18 total
-  for(let i=0;i<18;i++){
+  // Scattered small items — 30 total
+  for(let i=0;i<30;i++){
     const types=['plant','trash','cooler','plant','trash','plant'];
     const t=types[i%types.length];
     furniture.push({x:150+Math.random()*(WW-300),y:150+Math.random()*(WH-300),
@@ -549,7 +559,8 @@ const P={x:WW/2-20,y:WH/2+30,w:40,h:52,speed:1.1,hp:10,maxHp:10,ammo:25,maxAmmo:
   facing:0,anim:'idle',frame:0,animT:0,shooting:false,shootCD:0,
   shootPower:1,score:0,invincible:0,
   jumping:false,jumpZ:0,jumpVZ:0,jumpCD:0,
-  dashCD:0,dashing:0,laserTime:0,shieldTime:0,shieldHits:0,grenadeTime:0};
+  dashCD:0,dashing:0,dashCharges:5,dashMaxCharges:5,dashRechargeCD:0,
+  laserTime:0,shieldTime:0,shieldHits:0,grenadeTime:0};
 
 // Double-tap detection
 const tapState={left:{last:0,held:false},right:{last:0,held:false},up:{last:0,held:false},down:{last:0,held:false}};
@@ -577,7 +588,7 @@ const DIR_ANIMS={
 
 function resetGame(){
   P.x=WW/2-20;P.y=WH/2+30;P.hp=P.maxHp;P.ammo=25;P.maxAmmo=25;P.shootPower=1;P.speed=1.1;
-  P.score=0;P.invincible=0;P.shooting=false;P.shootCD=0;P.jumping=false;P.jumpZ=0;P.jumpVZ=0;P.jumpCD=0;P.dashCD=0;P.dashing=0;P.laserTime=0;P.shieldTime=0;P.shieldHits=0;P.grenadeTime=0;
+  P.score=0;P.invincible=0;P.shooting=false;P.shootCD=0;P.jumping=false;P.jumpZ=0;P.jumpVZ=0;P.jumpCD=0;P.dashCD=0;P.dashing=0;P.dashCharges=5;P.dashMaxCharges=5;P.dashRechargeCD=0;P.laserTime=0;P.shieldTime=0;P.shieldHits=0;P.grenadeTime=0;
   wave=0;enemies=[];bullets=[];particles=[];spawnAnim=[];pickups=[];waveCleared=true;waveTimer=80;
   furniture.forEach(f=>{
     if(f.type==='coffee'){f.hp=f.maxHp;f.dead=false;f.hit=0}
@@ -589,7 +600,7 @@ function startWave(w){
   wave=w;waveCleared=false;waveTimer=0;
   const count=Math.min(6+Math.floor(w*2),30);
   const hpBase=2+Math.floor(w*0.5);
-  const speedBase=0.65+w*0.07; // Faster enemies
+  const speedBase=0.85+w*0.09; // Aggressive enemies
 
   P.ammo=Math.min(P.maxAmmo,P.ammo+8+wave*2);
   if(w%5===0){P.shootPower++;P.maxAmmo+=5;P.maxHp+=2;P.hp=Math.min(P.maxHp,P.hp+5)}
@@ -975,6 +986,16 @@ function drawHUD(){
   ctx.fillStyle='#b91c1c';ctx.fillRect(10,30,96*(P.ammo/P.maxAmmo),10);
   ctx.fillStyle='#fff';ctx.font='bold 9px monospace';
   ctx.fillText('AMMO:'+P.ammo+'/'+P.maxAmmo,12,39);
+  // Dash charges
+  ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(8,44,100,14);
+  if(P.dashCharges>0){
+    for(let d=0;d<P.dashCharges;d++){ctx.fillStyle='#0ff';ctx.fillRect(10+d*19,46,16,10)}
+  }else{
+    const rechargeP=1-(P.dashRechargeCD/300);
+    ctx.fillStyle='#0ff';ctx.fillRect(10,46,96*rechargeP,10);
+  }
+  ctx.fillStyle='#fff';ctx.font='bold 9px monospace';
+  ctx.fillText(P.dashCharges>0?'DASH:'+P.dashCharges:'RECHARGING...',12,55);
   // Wave + Score
   ctx.fillStyle='#ffd700';ctx.font='bold 16px monospace';ctx.textAlign='right';
   ctx.fillText('WAVE '+wave+'/'+maxWave,W-12,22);
@@ -1055,7 +1076,7 @@ function drawTitle(){
     ctx.fillText(menuSel===i?'▶ '+menuItems[i]:'  '+menuItems[i],mx,iy+4);
   }
   ctx.fillStyle='rgba(255,255,255,.35)';ctx.font='10px monospace';ctx.textAlign='center';
-  ctx.fillText('D-PAD=MOVE  A=SHOOT  B=JUMP  DBL-TAP=DASH  L=SPRINT',W/2,H-8);
+  ctx.fillText('D-PAD=MOVE  A=SHOOT  B=DASH  L=SPRINT',W/2,H-8);
 }
 function drawGameOver(){
   drawFloor();
@@ -1089,10 +1110,20 @@ function updatePlayer(){
   if(mx&&my){mx*=.707;my*=.707}
   P.x+=mx;P.y+=my;
   P.x=Math.max(14,Math.min(WW-P.w-14,P.x));P.y=Math.max(30,Math.min(WH-P.h-6,P.y));
-  // Jump with B button
-  P.jumpCD=Math.max(0,P.jumpCD-1);
-  if(keys.b&&!P.jumping&&P.jumpCD<=0){P.jumping=true;P.jumpVZ=6.5;P.jumpCD=25;SFX.jump()}
-  if(P.jumping){P.jumpZ+=P.jumpVZ;P.jumpVZ-=0.45;if(P.jumpZ<=0){P.jumpZ=0;P.jumping=false;P.jumpVZ=0;SFX.land()}}
+  // B button = dash in facing direction (5 charges, 5sec recharge when empty)
+  P.dashCD=Math.max(0,P.dashCD-1);
+  if(P.dashCharges<=0){P.dashRechargeCD=Math.max(0,P.dashRechargeCD-1);if(P.dashRechargeCD<=0){P.dashCharges=P.dashMaxCharges}}
+  if(keys.b&&!prevKeys.b&&P.dashCD<=0&&P.dashing<=0&&P.dashCharges>0){
+    P.dashCharges--;
+    if(P.dashCharges<=0)P.dashRechargeCD=300; // 5 seconds at 60fps
+    const dashDist=55;const dd=dashDist*.707;
+    const dmap=[[0,dashDist],[-dashDist,0],[dashDist,0],[0,-dashDist],[-dd,dd],[dd,dd],[-dd,-dd],[dd,-dd]];
+    const dm=dmap[P.facing]||dmap[0];
+    P.x+=dm[0];P.y+=dm[1];
+    P.x=Math.max(14,Math.min(WW-P.w-14,P.x));P.y=Math.max(30,Math.min(WH-P.h-6,P.y));
+    P.dashCD=15;P.dashing=8;P.invincible=Math.max(P.invincible,12);
+    SFX.dodge();spawnP(P.x+P.w/2,P.y+P.h/2,'#0ff',6);
+  }
   // Furniture collision (skip non-solid) — only when NOT jumping
   if(!P.jumping){
     furniture.forEach(f=>{
@@ -1175,40 +1206,8 @@ function updatePlayer(){
     });
     spawnP(px,py,'#ff8800',4);
   }else if(!keys.a)P.shooting=false;
-  // Double-tap dash detection
-  P.dashCD=Math.max(0,P.dashCD-1);
+  // Dash afterimage tick
   if(P.dashing>0){P.dashing--;P.invincible=Math.max(P.invincible,2)}
-  ['left','right','up','down'].forEach(dir=>{
-    if(keys[dir]&&!prevKeys[dir]){
-      // Key just pressed
-      if(tapState[dir].last>0&&P.dashCD<=0&&P.dashing<=0){
-        // Double tap! Dash in that direction
-        const dashDist=50;
-        const dmap={left:[-dashDist,0],right:[dashDist,0],up:[0,-dashDist],down:[0,dashDist]};
-        P.x+=dmap[dir][0];P.y+=dmap[dir][1];
-        P.x=Math.max(14,Math.min(WW-P.w-14,P.x));P.y=Math.max(30,Math.min(WH-P.h-6,P.y));
-        P.dashCD=30;P.dashing=8;P.invincible=Math.max(P.invincible,12);
-        SFX.dodge();
-        spawnP(P.x+P.w/2,P.y+P.h/2,'#0ff',6);
-        tapState[dir].last=0;
-      } else {
-        tapState[dir].last=TAP_WINDOW;
-      }
-    }
-    prevKeys[dir]=keys[dir];
-    if(tapState[dir].last>0)tapState[dir].last--;
-  });
-  // R button = instant dash in facing direction
-  if(keys.r&&P.dashCD<=0&&P.dashing<=0){
-    const dashDist=50;
-    const dd=dashDist*.707;
-    const dmap=[[0,dashDist],[-dashDist,0],[dashDist,0],[0,-dashDist],[-dd,dd],[dd,dd],[-dd,-dd],[dd,-dd]];
-    const dm=dmap[P.facing]||dmap[0];
-    P.x+=dm[0];P.y+=dm[1];
-    P.x=Math.max(14,Math.min(WW-P.w-14,P.x));P.y=Math.max(30,Math.min(WH-P.h-6,P.y));
-    P.dashCD=30;P.dashing=8;P.invincible=Math.max(P.invincible,12);
-    SFX.dodge();spawnP(P.x+P.w/2,P.y+P.h/2,'#0ff',6);
-  }
   if(P.invincible>0)P.invincible--;
   // Shield bubble — immune to damage
   // Shield — hit-based, not timed
@@ -1237,7 +1236,7 @@ function updateEnemies(){
     if(dist>1){e.x+=dx/dist*e.speed;e.y+=dy/dist*e.speed}
     if(P.invincible<=0&&dist<40){
       if(P.shieldHits>0){
-        P.shieldHits--;P.invincible=20;SFX.playerHit();
+        P.shieldHits--;P.invincible=60;SFX.playerHit();
         spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',6);
         if(P.shieldHits<=0){P.shieldTime=0;spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',12)}
       }else{
