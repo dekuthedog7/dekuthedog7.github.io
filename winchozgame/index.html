@@ -471,10 +471,16 @@ let state='intro',menuSel=0,pauseSel=0,prevStart=false,prevUp=false,prevDown=fal
 // INTRO VIDEO
 const introVideo=document.createElement('video');
 introVideo.src='intro.mp4';introVideo.playsInline=true;introVideo.preload='auto';introVideo.muted=false;
-let introStarted=false,introTapped=false;
-// Canvas tap to start intro video
-document.addEventListener('click',()=>{introTapped=true},{once:false});
-document.addEventListener('touchstart',()=>{introTapped=true},{passive:true});
+let introStarted=false;
+// Tap anywhere to start intro — must call play() INSIDE the gesture handler for iOS
+function onIntroTap(){
+  if(introStarted||state!=='intro')return;
+  introStarted=true;initAudio();
+  introVideo.play().catch(()=>{state='title'});
+  introVideo.onended=()=>{state='title'};
+}
+document.addEventListener('click',onIntroTap,{once:false});
+document.addEventListener('touchend',onIntroTap,{passive:true});
 
 // OFFICE FURNITURE — spread across huge map
 const furniture=[];
@@ -1408,10 +1414,9 @@ function loop(){
       ctx.fillText('TAP TO START',W/2,H/2);
       ctx.fillStyle='#aaa';ctx.font='12px monospace';
       ctx.fillText('WINCHOZ ADVENTURE',W/2,H/2+30);
-      if((keys.start||keys.a||keys.b||introTapped)){
-        introTapped=false;initAudio();introStarted=true;
-        introVideo.play().catch(()=>{state='title'});
-        introVideo.onended=()=>{state='title'};
+      if(keys.start||keys.a||keys.b){
+        // GBA button press also triggers intro (calls same handler)
+        onIntroTap();
       }
       prevStart=keys.start;prevA=keys.a;
       requestAnimationFrame(loop);return;
