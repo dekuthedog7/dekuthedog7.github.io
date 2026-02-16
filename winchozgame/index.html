@@ -471,11 +471,11 @@ let state='intro',menuSel=0,pauseSel=0,prevStart=false,prevUp=false,prevDown=fal
 // INTRO VIDEO
 const introVideo=document.createElement('video');
 introVideo.src='intro.mp4';introVideo.playsInline=true;introVideo.preload='auto';introVideo.muted=false;
-let introStarted=false;
+let introStarted=false,introFrame=0;
 // Tap anywhere to start intro — must call play() INSIDE the gesture handler for iOS
 function onIntroTap(){
   if(introStarted||state!=='intro')return;
-  introStarted=true;initAudio();
+  introStarted=true;introFrame=gameTime;initAudio();
   introVideo.play().catch(()=>{state='title'});
   introVideo.onended=()=>{state='title'};
 }
@@ -1433,7 +1433,7 @@ function loop(){
     ctx.fillStyle='rgba(255,255,255,.4)';ctx.font='10px monospace';ctx.textAlign='right';
     ctx.fillText('START or A to skip',W-10,H-8);
     // Skip with START or A
-    if((keys.start&&!prevStart)||(keys.a&&!prevA)){introVideo.pause();state='title'}
+    if(gameTime-introFrame>30&&((keys.start&&!prevStart)||(keys.a&&!prevA))){introVideo.pause();state='title'}
     prevStart=keys.start;prevA=keys.a;
   }else if(state==='title'){
     if(audioCtx)ensureMusic('title');
