@@ -560,7 +560,7 @@ const P={x:WW/2-20,y:WH/2+30,w:40,h:52,speed:1.1,hp:10,maxHp:10,ammo:25,maxAmmo:
   shootPower:1,score:0,invincible:0,
   jumping:false,jumpZ:0,jumpVZ:0,jumpCD:0,
   dashCD:0,dashing:0,dashCharges:5,dashMaxCharges:5,dashRechargeCD:0,
-  laserTime:0,shieldTime:0,shieldHits:0,grenadeTime:0};
+  laserTime:0,shieldTime:0,shieldHits:0,shieldCooldown:0,grenadeTime:0};
 
 // Double-tap detection
 const tapState={left:{last:0,held:false},right:{last:0,held:false},up:{last:0,held:false},down:{last:0,held:false}};
@@ -588,7 +588,7 @@ const DIR_ANIMS={
 
 function resetGame(){
   P.x=WW/2-20;P.y=WH/2+30;P.hp=P.maxHp;P.ammo=25;P.maxAmmo=25;P.shootPower=1;P.speed=1.1;
-  P.score=0;P.invincible=0;P.shooting=false;P.shootCD=0;P.jumping=false;P.jumpZ=0;P.jumpVZ=0;P.jumpCD=0;P.dashCD=0;P.dashing=0;P.dashCharges=5;P.dashMaxCharges=5;P.dashRechargeCD=0;P.laserTime=0;P.shieldTime=0;P.shieldHits=0;P.grenadeTime=0;
+  P.score=0;P.invincible=0;P.shooting=false;P.shootCD=0;P.jumping=false;P.jumpZ=0;P.jumpVZ=0;P.jumpCD=0;P.dashCD=0;P.dashing=0;P.dashCharges=5;P.dashMaxCharges=5;P.dashRechargeCD=0;P.laserTime=0;P.shieldTime=0;P.shieldHits=0;P.shieldCooldown=0;P.grenadeTime=0;
   wave=0;enemies=[];bullets=[];particles=[];spawnAnim=[];pickups=[];waveCleared=true;waveTimer=80;
   furniture.forEach(f=>{
     if(f.type==='coffee'){f.hp=f.maxHp;f.dead=false;f.hit=0}
@@ -1014,7 +1014,13 @@ function drawHUD(){
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,72,80,6);
     ctx.fillStyle='#0ff';ctx.fillRect(10,72,80*(P.laserTime/(25*60)),6);
   }
-  if(P.shieldHits>0){
+  if(P.shieldCooldown>0){
+    const sy=P.laserTime>0?84:68;
+    ctx.fillStyle='#666';ctx.font='bold 11px monospace';ctx.textAlign='left';
+    ctx.fillText('SHIELD CD: '+Math.ceil(P.shieldCooldown/60)+'s',10,sy);
+    ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,sy+4,80,6);
+    ctx.fillStyle='#555';ctx.fillRect(10,sy+4,80*(1-P.shieldCooldown/300),6);
+  }else if(P.shieldHits>0){
     ctx.fillStyle='#0af';ctx.font='bold 11px monospace';ctx.textAlign='left';
     ctx.fillText('🛡️ SHIELD: '+P.shieldHits+' hits',10,P.laserTime>0?84:68);
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,P.laserTime>0?88:72,80,6);
@@ -1200,7 +1206,7 @@ function updatePlayer(){
         if(f.hp<=0){
           f.dead=true;SFX.coffeeBreak();
           if(f.subtype==='grenade'){P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);playTone(150,0.2,'sawtooth',0.3)}
-          else{P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);playTone(600,0.15,'sine',0.2)}
+          else if(P.shieldCooldown<=0){P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);playTone(600,0.15,'sine',0.2)}
           P.score+=50;
         }
       }
@@ -1212,6 +1218,7 @@ function updatePlayer(){
   if(P.invincible>0)P.invincible--;
   // Shield bubble — immune to damage
   // Shield — hit-based, not timed
+  if(P.shieldCooldown>0)P.shieldCooldown--;
   if(P.shieldHits>0){P.invincible=Math.max(P.invincible,2)}
   // Grenade auto-fire — shoots in all 8 directions every 8 frames
   if(P.grenadeTime>0){
@@ -1239,7 +1246,7 @@ function updateEnemies(){
       if(P.shieldHits>0){
         P.shieldHits--;P.invincible=60;SFX.playerHit();
         spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',6);
-        if(P.shieldHits<=0){P.shieldTime=0;spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',12)}
+        if(P.shieldHits<=0){P.shieldTime=0;P.shieldCooldown=300;spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',12)}
       }else{
         P.hp-=e.type==='boss'?3:e.type==='brute'?2:1;P.invincible=45;SFX.playerHit();
         spawnP(P.x+P.w/2,P.y+P.h/2,'#f33',8);
@@ -1295,7 +1302,7 @@ function updateBullets(){
           if(f.subtype==='grenade'){
             P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);
             playTone(150,0.2,'sawtooth',0.3);playNoise(0.15,0.25);
-          }else{
+          }else if(P.shieldCooldown<=0){
             P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);
             playTone(600,0.15,'sine',0.2);playTone(900,0.1,'sine',0.15);
           }
