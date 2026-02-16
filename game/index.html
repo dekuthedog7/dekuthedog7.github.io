@@ -405,7 +405,7 @@ function zombieGroan(){
 const menuAudio=new Audio('menu.mp3');
 menuAudio.loop=true;menuAudio.volume=0.15;
 // GAME MUSIC — mp3 file, looped
-const gameAudio=new Audio('level_music.mp3');
+const gameAudio=new Audio('level_music.wav');
 gameAudio.loop=true;gameAudio.volume=0.25;
 let musicEnabled=true;
 function startGameMusic(){if(!musicEnabled)return;gameAudio.currentTime=0;gameAudio.play().catch(()=>{})}
@@ -1432,13 +1432,13 @@ function loop(){
     else if(keys.a&&!prevA){
       if(pauseSel===0){state='playing';SFX.menuSelect();if(musicEnabled)gameAudio.play().catch(()=>{})}
       else if(pauseSel===1){toggleGameMusic();SFX.menuSelect()}
-      else if(pauseSel===2){gameAudio.volume=Math.max(0,Math.round((gameAudio.volume-0.2)*5)/5);SFX.menuMove()}
-      else if(pauseSel===3){gameAudio.volume=Math.min(1,Math.round((gameAudio.volume+0.2)*5)/5);SFX.menuMove()}
+      else if(pauseSel===2){const v=Math.round(gameAudio.volume*5);gameAudio.volume=Math.max(0,(v-1)/5);SFX.menuMove()}
+      else if(pauseSel===3){const v=Math.round(gameAudio.volume*5);gameAudio.volume=Math.min(1,(v+1)/5);SFX.menuMove()}
       else if(pauseSel===4){state='title';menuSel=0;ensureMusic('none');SFX.menuSelect()}
     }
     // Left/right on VOL items adjusts directly
-    if((pauseSel===2||pauseSel===3)&&keys.left&&!prevKeys.left){gameAudio.volume=Math.max(0,Math.round((gameAudio.volume-0.2)*5)/5);SFX.menuMove()}
-    if((pauseSel===2||pauseSel===3)&&keys.right&&!prevKeys.right){gameAudio.volume=Math.min(1,Math.round((gameAudio.volume+0.2)*5)/5);SFX.menuMove()}
+    if((pauseSel===2||pauseSel===3)&&keys.left&&!prevKeys.left){const v=Math.round(gameAudio.volume*5);gameAudio.volume=Math.max(0,(v-1)/5);SFX.menuMove()}
+    if((pauseSel===2||pauseSel===3)&&keys.right&&!prevKeys.right){const v=Math.round(gameAudio.volume*5);gameAudio.volume=Math.min(1,(v+1)/5);SFX.menuMove()}
     prevUp=keys.up;prevDown=keys.down;prevStart=keys.start;prevSelect=keys.select;prevA=keys.a;
     drawPause();
   }else if(state==='playing'){
