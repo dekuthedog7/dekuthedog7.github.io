@@ -606,6 +606,17 @@ function startWave(w){
   const speedBase=0.85+w*0.09; // Aggressive enemies
 
   P.ammo=Math.min(P.maxAmmo,P.ammo+12+wave*3);
+  // Spawn random ammo pickups on the floor
+  const ammoDrops=3+Math.floor(w*0.5);
+  for(let a=0;a<ammoDrops;a++){
+    const ax=120+Math.random()*(WW-240),ay=120+Math.random()*(WH-240);
+    pickups.push({x:ax,y:ay,w:20,h:20,type:'ammo',amount:5+Math.floor(Math.random()*8),life:9999});
+  }
+  // Also spawn a couple grenades on later waves
+  if(w>=3){const gc=Math.floor(w/3);for(let g=0;g<gc;g++){
+    const gx=120+Math.random()*(WW-240),gy=120+Math.random()*(WH-240);
+    pickups.push({x:gx,y:gy,w:22,h:22,type:'grenade',life:9999});
+  }}
   if(w%5===0){P.shootPower++;P.maxAmmo+=5;P.maxHp+=2;P.hp=Math.min(P.maxHp,P.hp+5)}
   if(w%3===0)P.hp=Math.min(P.maxHp,P.hp+3);
 
@@ -1298,6 +1309,7 @@ function updatePickups(){
       if(pk.type==='ammo'){P.ammo=Math.min(P.maxAmmo,P.ammo+pk.amount);spawnP(pk.x,pk.y,'#b91c1c',6);SFX.pickup()}
       if(pk.type==='health'){P.hp=Math.min(P.maxHp,P.hp+pk.amount);spawnP(pk.x,pk.y,'#0f4',6);SFX.pickup()}
       if(pk.type==='laser'){P.laserTime=25*60;spawnP(pk.x,pk.y,'#0ff',8);SFX.waveClear()}
+      if(pk.type==='grenade'){P.grenadeTime=5*60;spawnP(pk.x,pk.y,'#ff4400',10);playTone(150,0.2,'sawtooth',0.3)}
       return false;
     }
     return true;
@@ -1325,6 +1337,11 @@ function drawPickups(){
       ctx.fillStyle='#0ff';ctx.fillRect(pk.x,pk.y,pk.w,pk.h);
       ctx.fillStyle='#000';ctx.font='bold 7px monospace';ctx.textAlign='center';
       ctx.fillText('LASER',pk.x+pk.w/2,pk.y+13);
+    }else if(pk.type==='grenade'){
+      ctx.fillStyle='#ff4400';ctx.fillRect(pk.x,pk.y,pk.w,pk.h);
+      ctx.fillStyle='#cc2200';ctx.fillRect(pk.x,pk.y,pk.w,4);
+      ctx.fillStyle='#fff';ctx.font='bold 7px monospace';ctx.textAlign='center';
+      ctx.fillText('💥',pk.x+pk.w/2,pk.y+15);
     }
   });
   ctx.restore();
