@@ -405,7 +405,7 @@ function zombieGroan(){
 const menuAudio=new Audio('menu.mp3');
 menuAudio.loop=true;menuAudio.volume=0.15;
 // GAME MUSIC — mp3 file, looped
-const gameAudio=new Audio('level_music.wav');
+const gameAudio=new Audio('level_music.mp3');
 gameAudio.loop=true;gameAudio.volume=0.25;
 let musicEnabled=true;
 function startGameMusic(){if(!musicEnabled)return;gameAudio.currentTime=0;gameAudio.play().catch(()=>{})}
