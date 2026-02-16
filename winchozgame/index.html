@@ -549,7 +549,7 @@ const P={x:WW/2-20,y:WH/2+30,w:40,h:52,speed:1.1,hp:10,maxHp:10,ammo:25,maxAmmo:
   facing:0,anim:'idle',frame:0,animT:0,shooting:false,shootCD:0,
   shootPower:1,score:0,invincible:0,
   jumping:false,jumpZ:0,jumpVZ:0,jumpCD:0,
-  dashCD:0,dashing:0,laserTime:0,shieldTime:0,grenadeTime:0};
+  dashCD:0,dashing:0,laserTime:0,shieldTime:0,shieldHits:0,grenadeTime:0};
 
 // Double-tap detection
 const tapState={left:{last:0,held:false},right:{last:0,held:false},up:{last:0,held:false},down:{last:0,held:false}};
@@ -577,7 +577,7 @@ const DIR_ANIMS={
 
 function resetGame(){
   P.x=WW/2-20;P.y=WH/2+30;P.hp=P.maxHp;P.ammo=25;P.maxAmmo=25;P.shootPower=1;P.speed=1.1;
-  P.score=0;P.invincible=0;P.shooting=false;P.shootCD=0;P.jumping=false;P.jumpZ=0;P.jumpVZ=0;P.jumpCD=0;P.dashCD=0;P.dashing=0;P.laserTime=0;P.shieldTime=0;P.grenadeTime=0;
+  P.score=0;P.invincible=0;P.shooting=false;P.shootCD=0;P.jumping=false;P.jumpZ=0;P.jumpVZ=0;P.jumpCD=0;P.dashCD=0;P.dashing=0;P.laserTime=0;P.shieldTime=0;P.shieldHits=0;P.grenadeTime=0;
   wave=0;enemies=[];bullets=[];particles=[];spawnAnim=[];pickups=[];waveCleared=true;waveTimer=80;
   furniture.forEach(f=>{
     if(f.type==='coffee'){f.hp=f.maxHp;f.dead=false;f.hit=0}
@@ -917,7 +917,7 @@ function drawPlayer(){
   if(P.dashing>0){ctx.globalAlpha=0.3;drawImg(charImgs[frames[fi]],P.x-12+(flipSprite?8:-8),P.y-20-P.jumpZ,64,84,flipSprite);ctx.globalAlpha=1}
   drawImg(charImgs[frames[fi]],P.x-12,P.y-20-P.jumpZ,64,84,flipSprite);
   // Shield bubble
-  if(P.shieldTime>0){
+  if(P.shieldHits>0){
     const pulse=0.3+Math.sin(gameTime*0.15)*0.15;
     ctx.strokeStyle=`rgba(0,200,255,${pulse})`;ctx.lineWidth=2;
     ctx.beginPath();ctx.arc(P.x+P.w/2,P.y+P.h/2-P.jumpZ,38+Math.sin(gameTime*0.1)*3,0,Math.PI*2);ctx.stroke();
@@ -993,16 +993,15 @@ function drawHUD(){
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,72,80,6);
     ctx.fillStyle='#0ff';ctx.fillRect(10,72,80*(P.laserTime/(25*60)),6);
   }
-  if(P.shieldTime>0){
-    const secs=Math.ceil(P.shieldTime/60);
+  if(P.shieldHits>0){
     ctx.fillStyle='#0af';ctx.font='bold 11px monospace';ctx.textAlign='left';
-    ctx.fillText('🛡️ SHIELD: '+secs+'s',10,P.laserTime>0?84:68);
+    ctx.fillText('🛡️ SHIELD: '+P.shieldHits+' hits',10,P.laserTime>0?84:68);
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,P.laserTime>0?88:72,80,6);
-    ctx.fillStyle='#0af';ctx.fillRect(10,P.laserTime>0?88:72,80*(P.shieldTime/(7*60)),6);
+    ctx.fillStyle='#0af';ctx.fillRect(10,P.laserTime>0?88:72,80*(P.shieldHits/5),6);
   }
   if(P.grenadeTime>0){
     const secs=Math.ceil(P.grenadeTime/60);
-    const gy=68+(P.laserTime>0?16:0)+(P.shieldTime>0?16:0);
+    const gy=68+(P.laserTime>0?16:0)+(P.shieldHits>0?16:0);
     ctx.fillStyle='#f44';ctx.font='bold 11px monospace';ctx.textAlign='left';
     ctx.fillText('💥 AUTO-FIRE: '+secs+'s',10,gy);
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,gy+4,80,6);
@@ -1169,7 +1168,7 @@ function updatePlayer(){
         if(f.hp<=0){
           f.dead=true;SFX.coffeeBreak();
           if(f.subtype==='grenade'){P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);playTone(150,0.2,'sawtooth',0.3)}
-          else{P.shieldTime=7*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);playTone(600,0.15,'sine',0.2)}
+          else{P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);playTone(600,0.15,'sine',0.2)}
           P.score+=50;
         }
       }
@@ -1212,7 +1211,8 @@ function updatePlayer(){
   }
   if(P.invincible>0)P.invincible--;
   // Shield bubble — immune to damage
-  if(P.shieldTime>0){P.shieldTime--;P.invincible=Math.max(P.invincible,2)}
+  // Shield — hit-based, not timed
+  if(P.shieldHits>0){P.invincible=Math.max(P.invincible,2)}
   // Grenade auto-fire — shoots in all 8 directions every 8 frames
   if(P.grenadeTime>0){
     P.grenadeTime--;
@@ -1236,9 +1236,15 @@ function updateEnemies(){
     if(dist<350&&Math.random()<0.015)zombieGroan();
     if(dist>1){e.x+=dx/dist*e.speed;e.y+=dy/dist*e.speed}
     if(P.invincible<=0&&dist<40){
-      P.hp-=e.type==='boss'?3:e.type==='brute'?2:1;P.invincible=45;SFX.playerHit();
-      spawnP(P.x+P.w/2,P.y+P.h/2,'#f33',8);
-      if(P.hp<=0){state='gameover';SFX.gameOver();ensureMusic('none')}
+      if(P.shieldHits>0){
+        P.shieldHits--;P.invincible=20;SFX.playerHit();
+        spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',6);
+        if(P.shieldHits<=0){P.shieldTime=0;spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',12)}
+      }else{
+        P.hp-=e.type==='boss'?3:e.type==='brute'?2:1;P.invincible=45;SFX.playerHit();
+        spawnP(P.x+P.w/2,P.y+P.h/2,'#f33',8);
+        if(P.hp<=0){state='gameover';SFX.gameOver();ensureMusic('none')}
+      }
     }
   });
 }
@@ -1290,7 +1296,7 @@ function updateBullets(){
             P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);
             playTone(150,0.2,'sawtooth',0.3);playNoise(0.15,0.25);
           }else{
-            P.shieldTime=7*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);
+            P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);
             playTone(600,0.15,'sine',0.2);playTone(900,0.1,'sine',0.15);
           }
           P.score+=50;
