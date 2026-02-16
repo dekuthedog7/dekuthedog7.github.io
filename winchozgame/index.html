@@ -86,9 +86,6 @@ function initAudio(){
   if(audioCtx)return;
   audioCtx=new(window.AudioContext||window.webkitAudioContext)();
   masterGain=audioCtx.createGain();masterGain.gain.value=0.4;masterGain.connect(audioCtx.destination);
-  // Unlock HTML5 Audio elements on mobile (need user gesture to .play())
-  menuAudio.play().then(()=>menuAudio.pause()).catch(()=>{});
-  gameAudio.play().then(()=>{gameAudio.pause();gameAudio.currentTime=0}).catch(()=>{});
 }
 // Play a tone: freq, duration, type(square/sawtooth/triangle), volume, detune
 function playTone(freq,dur,type='square',vol=0.3,detune=0){
@@ -411,7 +408,7 @@ menuAudio.loop=true;menuAudio.volume=0.15;
 const gameAudio=new Audio('level_music.mp3');
 gameAudio.loop=true;gameAudio.volume=0.4;
 let musicEnabled=true;
-function startGameMusic(){if(!musicEnabled)return;gameAudio.currentTime=0;gameAudio.play().catch(e=>{console.warn('Game music play failed:',e);setTimeout(()=>gameAudio.play().catch(()=>{}),500)})}
+function startGameMusic(){if(!musicEnabled)return;gameAudio.currentTime=0;gameAudio.play().catch(()=>{})}
 function stopGameMusic(){gameAudio.pause();gameAudio.currentTime=0}
 function toggleGameMusic(){
   musicEnabled=!musicEnabled;
@@ -471,16 +468,10 @@ let state='intro',menuSel=0,pauseSel=0,prevStart=false,prevUp=false,prevDown=fal
 // INTRO VIDEO
 const introVideo=document.createElement('video');
 introVideo.src='intro.mp4';introVideo.playsInline=true;introVideo.preload='auto';introVideo.muted=false;
-let introStarted=false,introFrame=0;
-// Tap anywhere to start intro — must call play() INSIDE the gesture handler for iOS
-function onIntroTap(){
-  if(introStarted||state!=='intro')return;
-  introStarted=true;introFrame=gameTime;initAudio();
-  introVideo.play().catch(()=>{state='title'});
-  introVideo.onended=()=>{state='title'};
-}
-document.addEventListener('click',onIntroTap,{once:false});
-document.addEventListener('touchend',onIntroTap,{passive:true});
+let introStarted=false,introTapped=false;
+// Canvas tap to start intro video
+document.addEventListener('click',()=>{introTapped=true},{once:false});
+document.addEventListener('touchstart',()=>{introTapped=true},{passive:true});
 
 // OFFICE FURNITURE — spread across huge map
 const furniture=[];
@@ -586,8 +577,8 @@ let wave=0,maxWave=10,enemies=[],bullets=[],particles=[],
 furniture.forEach(f=>{
   if(f.type==='coffee'){f.hp=3;f.maxHp=3;f.hit=0;f.dead=false}
   if(f.type==='printer'){
-    // Randomly assign printer subtype: grenade or shield
-    f.subtype=Math.random()<0.5?'grenade':'shield';
+    // Randomly assign printer subtype: grenade or ammo
+    f.subtype=Math.random()<0.6?'grenade':'ammo';
     f.hp=3;f.maxHp=3;f.hit=0;f.dead=false;
   }
 });
@@ -614,7 +605,7 @@ function startWave(w){
   const hpBase=2+Math.floor(w*0.5);
   const speedBase=0.85+w*0.09; // Aggressive enemies
 
-  P.ammo=Math.min(P.maxAmmo,P.ammo+8+wave*2);
+  P.ammo=Math.min(P.maxAmmo,P.ammo+12+wave*3);
   if(w%5===0){P.shootPower++;P.maxAmmo+=5;P.maxHp+=2;P.hp=Math.min(P.maxHp,P.hp+5)}
   if(w%3===0)P.hp=Math.min(P.maxHp,P.hp+3);
 
@@ -775,12 +766,12 @@ function drawFurnitureItem(f){
       ctx.fillStyle='#ddd';ctx.fillRect(x,y,w,h);
       ctx.fillStyle='#eee';ctx.fillRect(x,y,w,4);ctx.fillStyle='#bbb';ctx.fillRect(x+2,y+h-3,w-4,3);
       ctx.fillStyle='#999';ctx.fillRect(x+6,y+6,w-12,10);// display
-      // Color-coded LED: red=grenade, blue=shield
-      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#0af';
+      // Color-coded LED: red=grenade, green=ammo
+      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#4f4';
       ctx.fillRect(x+8,y+8,4,3);
       // Subtype icon
-      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#0af';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
-      ctx.fillText(f.subtype==='grenade'?'💥':'🛡️',x+w/2,y+h-16);
+      ctx.fillStyle=f.subtype==='grenade'?'#f44':'#4f4';ctx.font='bold 7px sans-serif';ctx.textAlign='center';
+      ctx.fillText(f.subtype==='grenade'?'💥':'🔫',x+w/2,y+h-16);
       ctx.fillStyle='#aaa';ctx.fillRect(x+4,y+h-10,w-8,4);// paper tray
       ctx.fillStyle='#fff';ctx.fillRect(x+8,y+h-14,w-16,4);// paper
       // Buttons
@@ -939,13 +930,7 @@ function drawPlayer(){
   const flipSprite=P.facing===1||P.facing===3||P.facing===4||P.facing===6;
   if(P.dashing>0){ctx.globalAlpha=0.3;drawImg(charImgs[frames[fi]],P.x-12+(flipSprite?8:-8),P.y-20-P.jumpZ,64,84,flipSprite);ctx.globalAlpha=1}
   drawImg(charImgs[frames[fi]],P.x-12,P.y-20-P.jumpZ,64,84,flipSprite);
-  // Shield bubble
-  if(P.shieldHits>0){
-    const pulse=0.3+Math.sin(gameTime*0.15)*0.15;
-    ctx.strokeStyle=`rgba(0,200,255,${pulse})`;ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(P.x+P.w/2,P.y+P.h/2-P.jumpZ,38+Math.sin(gameTime*0.1)*3,0,Math.PI*2);ctx.stroke();
-    ctx.fillStyle=`rgba(0,200,255,${pulse*0.2})`;ctx.fill();
-  }
+  // (shield removed)
   // Grenade glow
   if(P.grenadeTime>0){
     const gPulse=0.2+Math.sin(gameTime*0.2)*0.15;
@@ -1026,15 +1011,9 @@ function drawHUD(){
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,72,80,6);
     ctx.fillStyle='#0ff';ctx.fillRect(10,72,80*(P.laserTime/(25*60)),6);
   }
-  if(P.shieldHits>0){
-    ctx.fillStyle='#0af';ctx.font='bold 11px monospace';ctx.textAlign='left';
-    ctx.fillText('🛡️ SHIELD: '+P.shieldHits+' hits',10,P.laserTime>0?84:68);
-    ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,P.laserTime>0?88:72,80,6);
-    ctx.fillStyle='#0af';ctx.fillRect(10,P.laserTime>0?88:72,80*(P.shieldHits/5),6);
-  }
   if(P.grenadeTime>0){
     const secs=Math.ceil(P.grenadeTime/60);
-    const gy=68+(P.laserTime>0?16:0)+(P.shieldHits>0?16:0);
+    const gy=68+(P.laserTime>0?16:0);
     ctx.fillStyle='#f44';ctx.font='bold 11px monospace';ctx.textAlign='left';
     ctx.fillText('💥 AUTO-FIRE: '+secs+'s',10,gy);
     ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(10,gy+4,80,6);
@@ -1212,7 +1191,7 @@ function updatePlayer(){
         if(f.hp<=0){
           f.dead=true;SFX.coffeeBreak();
           if(f.subtype==='grenade'){P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);playTone(150,0.2,'sawtooth',0.3)}
-          else{P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);playTone(600,0.15,'sine',0.2)}
+          else{P.ammo=Math.min(P.maxAmmo,P.ammo+15);spawnP(f.x+f.w/2,f.y+f.h/2,'#44ff44',15);playTone(500,0.15,'sine',0.2)}
           P.score+=50;
         }
       }
@@ -1222,9 +1201,6 @@ function updatePlayer(){
   // Dash afterimage tick
   if(P.dashing>0){P.dashing--;P.invincible=Math.max(P.invincible,2)}
   if(P.invincible>0)P.invincible--;
-  // Shield bubble — immune to damage
-  // Shield — hit-based, not timed
-  if(P.shieldHits>0){P.invincible=Math.max(P.invincible,2)}
   // Grenade auto-fire — shoots in all 8 directions every 8 frames
   if(P.grenadeTime>0){
     P.grenadeTime--;
@@ -1248,15 +1224,9 @@ function updateEnemies(){
     if(dist<350&&Math.random()<0.015)zombieGroan();
     if(dist>1){e.x+=dx/dist*e.speed;e.y+=dy/dist*e.speed}
     if(P.invincible<=0&&dist<40){
-      if(P.shieldHits>0){
-        P.shieldHits--;P.invincible=60;SFX.playerHit();
-        spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',6);
-        if(P.shieldHits<=0){P.shieldTime=0;spawnP(P.x+P.w/2,P.y+P.h/2,'#0af',12)}
-      }else{
-        P.hp-=e.type==='boss'?3:e.type==='brute'?2:1;P.invincible=45;SFX.playerHit();
-        spawnP(P.x+P.w/2,P.y+P.h/2,'#f33',8);
-        if(P.hp<=0){state='gameover';SFX.gameOver();ensureMusic('none')}
-      }
+      P.hp-=e.type==='boss'?3:e.type==='brute'?2:1;P.invincible=45;SFX.playerHit();
+      spawnP(P.x+P.w/2,P.y+P.h/2,'#f33',8);
+      if(P.hp<=0){state='gameover';SFX.gameOver();ensureMusic('none')}
     }
   });
 }
@@ -1308,8 +1278,8 @@ function updateBullets(){
             P.grenadeTime=5*60;spawnP(f.x+f.w/2,f.y+f.h/2,'#ff4400',15);
             playTone(150,0.2,'sawtooth',0.3);playNoise(0.15,0.25);
           }else{
-            P.shieldTime=1;P.shieldHits=5;spawnP(f.x+f.w/2,f.y+f.h/2,'#00ccff',15);
-            playTone(600,0.15,'sine',0.2);playTone(900,0.1,'sine',0.15);
+            P.ammo=Math.min(P.maxAmmo,P.ammo+15);spawnP(f.x+f.w/2,f.y+f.h/2,'#44ff44',15);
+            playTone(500,0.15,'sine',0.2);SFX.pickup();
           }
           P.score+=50;
         }
@@ -1364,7 +1334,7 @@ function updateParticles(){particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=.94;p
 
 function updateWaves(){
   if(waveCleared){waveTimer--;if(waveTimer<=0){if(wave>=maxWave){state='win';SFX.win();ensureMusic('none');return}startWave(wave+1)};return}
-  if(enemies.filter(e=>!e.dead).length===0){waveCleared=true;waveTimer=100;P.ammo=Math.min(P.maxAmmo,P.ammo+5+wave);SFX.waveClear()}
+  if(enemies.filter(e=>!e.dead).length===0){waveCleared=true;waveTimer=100;P.ammo=Math.min(P.maxAmmo,P.ammo+10+wave*2);SFX.waveClear()}
 }
 
 // PAUSE SCREEN
@@ -1414,9 +1384,10 @@ function loop(){
       ctx.fillText('TAP TO START',W/2,H/2);
       ctx.fillStyle='#aaa';ctx.font='12px monospace';
       ctx.fillText('WINCHOZ ADVENTURE',W/2,H/2+30);
-      if(keys.start||keys.a||keys.b){
-        // GBA button press also triggers intro (calls same handler)
-        onIntroTap();
+      if((keys.start||keys.a||keys.b||introTapped)){
+        introTapped=false;initAudio();introStarted=true;
+        introVideo.play().catch(()=>{state='title'});
+        introVideo.onended=()=>{state='title'};
       }
       prevStart=keys.start;prevA=keys.a;
       requestAnimationFrame(loop);return;
@@ -1433,7 +1404,7 @@ function loop(){
     ctx.fillStyle='rgba(255,255,255,.4)';ctx.font='10px monospace';ctx.textAlign='right';
     ctx.fillText('START or A to skip',W-10,H-8);
     // Skip with START or A
-    if(gameTime-introFrame>30&&((keys.start&&!prevStart)||(keys.a&&!prevA))){introVideo.pause();state='title'}
+    if((keys.start&&!prevStart)||(keys.a&&!prevA)){introVideo.pause();state='title'}
     prevStart=keys.start;prevA=keys.a;
   }else if(state==='title'){
     if(audioCtx)ensureMusic('title');
