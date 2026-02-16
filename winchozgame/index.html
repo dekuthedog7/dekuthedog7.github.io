@@ -86,6 +86,9 @@ function initAudio(){
   if(audioCtx)return;
   audioCtx=new(window.AudioContext||window.webkitAudioContext)();
   masterGain=audioCtx.createGain();masterGain.gain.value=0.4;masterGain.connect(audioCtx.destination);
+  // Unlock HTML5 Audio elements on mobile (need user gesture to .play())
+  menuAudio.play().then(()=>menuAudio.pause()).catch(()=>{});
+  gameAudio.play().then(()=>{gameAudio.pause();gameAudio.currentTime=0}).catch(()=>{});
 }
 // Play a tone: freq, duration, type(square/sawtooth/triangle), volume, detune
 function playTone(freq,dur,type='square',vol=0.3,detune=0){
@@ -408,7 +411,7 @@ menuAudio.loop=true;menuAudio.volume=0.15;
 const gameAudio=new Audio('level_music.mp3');
 gameAudio.loop=true;gameAudio.volume=0.4;
 let musicEnabled=true;
-function startGameMusic(){if(!musicEnabled)return;gameAudio.currentTime=0;gameAudio.play().catch(()=>{})}
+function startGameMusic(){if(!musicEnabled)return;gameAudio.currentTime=0;gameAudio.play().catch(e=>{console.warn('Game music play failed:',e);setTimeout(()=>gameAudio.play().catch(()=>{}),500)})}
 function stopGameMusic(){gameAudio.pause();gameAudio.currentTime=0}
 function toggleGameMusic(){
   musicEnabled=!musicEnabled;
