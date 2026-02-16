@@ -405,8 +405,8 @@ function zombieGroan(){
 const menuAudio=new Audio('menu.mp3');
 menuAudio.loop=true;menuAudio.volume=0.15;
 // GAME MUSIC — mp3 file, looped
-const gameAudio=new Audio('level_music.wav');
-gameAudio.loop=true;gameAudio.volume=0.25;
+const gameAudio=new Audio('level_music.mp3');
+gameAudio.loop=true;gameAudio.volume=0.4;
 let musicEnabled=true;
 function startGameMusic(){if(!musicEnabled)return;gameAudio.currentTime=0;gameAudio.play().catch(()=>{})}
 function stopGameMusic(){gameAudio.pause();gameAudio.currentTime=0}
@@ -589,7 +589,7 @@ function startWave(w){
   wave=w;waveCleared=false;waveTimer=0;
   const count=Math.min(6+Math.floor(w*2),30);
   const hpBase=2+Math.floor(w*0.5);
-  const speedBase=0.45+w*0.05; // Slightly faster enemies
+  const speedBase=0.65+w*0.07; // Faster enemies
 
   P.ammo=Math.min(P.maxAmmo,P.ammo+8+wave*2);
   if(w%5===0){P.shootPower++;P.maxAmmo+=5;P.maxHp+=2;P.hp=Math.min(P.maxHp,P.hp+5)}
