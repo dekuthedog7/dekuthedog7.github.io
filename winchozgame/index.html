@@ -590,7 +590,7 @@ const DIR_ANIMS={
 };
 
 function resetGame(){
-  P.x=WW/2-20;P.y=WH/2+30;P.hp=P.maxHp;P.ammo=25;P.maxAmmo=25;P.shootPower=1;P.speed=1.4;
+  P.x=WW/2-20;P.y=WH/2+30;P.hp=P.maxHp;P.ammo=25;P.maxAmmo=25;P.shootPower=1;P.speed=1.6;
   P.score=0;P.invincible=0;P.shooting=false;P.shootCD=0;P.jumping=false;P.jumpZ=0;P.jumpVZ=0;P.jumpCD=0;P.dashCD=0;P.dashing=0;P.dashCharges=5;P.dashMaxCharges=5;P.dashRechargeCD=0;P.laserTime=0;P.shieldTime=0;P.shieldHits=0;P.grenadeTime=0;
   wave=0;enemies=[];bullets=[];particles=[];spawnAnim=[];pickups=[];waveCleared=true;waveTimer=80;
   furniture.forEach(f=>{
@@ -1078,7 +1078,7 @@ function drawTitle(){
     ctx.fillText(menuSel===i?'▶ '+menuItems[i]:'  '+menuItems[i],mx,iy+4);
   }
   ctx.fillStyle='rgba(255,255,255,.35)';ctx.font='10px monospace';ctx.textAlign='center';
-  ctx.fillText('D-PAD=MOVE  A=SHOOT  B=DASH  L=SPRINT',W/2,H-8);
+  ctx.fillText('D-PAD=MOVE  A=SHOOT  B=DASH',W/2,H-8);
 }
 function drawGameOver(){
   drawFloor();
@@ -1102,7 +1102,7 @@ function drawWin(){
 function spawnP(x,y,c,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,life:20+Math.random()*15,maxLife:35,color:c,size:2+Math.random()*3})}
 
 function updatePlayer(){
-  const spd=keys.l?P.speed*1.6:P.speed;
+  const spd=P.speed;
   let mx=0,my=0;
   if(keys.left){mx=-spd;P.facing=1}if(keys.right){mx=spd;P.facing=2}
   if(keys.up){my=-spd;P.facing=3}if(keys.down){my=spd;P.facing=0}
