@@ -565,7 +565,7 @@ const P={x:WW/2-20,y:WH/2+30,w:40,h:52,speed:1.1,hp:10,maxHp:10,ammo:25,maxAmmo:
 // Double-tap detection
 const tapState={left:{last:0,held:false},right:{last:0,held:false},up:{last:0,held:false},down:{last:0,held:false}};
 const TAP_WINDOW=15; // frames between taps to trigger dash
-const prevKeys={left:false,right:false,up:false,down:false};
+const prevKeys={left:false,right:false,up:false,down:false,b:false};
 
 let wave=0,maxWave=10,enemies=[],bullets=[],particles=[],
   waveTimer=0,waveCleared=false,spawnAnim=[],pickups=[];
@@ -1124,6 +1124,7 @@ function updatePlayer(){
     P.dashCD=15;P.dashing=8;P.invincible=Math.max(P.invincible,12);
     SFX.dodge();spawnP(P.x+P.w/2,P.y+P.h/2,'#0ff',6);
   }
+  prevKeys.b=keys.b;
   // Furniture collision (skip non-solid) — only when NOT jumping
   if(!P.jumping){
     furniture.forEach(f=>{
